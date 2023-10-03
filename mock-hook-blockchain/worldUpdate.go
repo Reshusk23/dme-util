@@ -7,6 +7,12 @@ import (
 	vmi "github.com/Reshusk23/dme-vm-common"
 )
 
+// CustomAccount embeds *vmcommon.OutputAccount and adds a Data field.
+type CustomAccount struct {
+    *vmi.OutputAccount
+    Data string
+}
+
 func defaultAccount(address []byte) *Account {
 	return &Account{
 		Exists:  false,
@@ -60,33 +66,43 @@ func (b *BlockchainHookMock) UpdateWorldStateBefore(
 }
 
 // UpdateAccounts should be called after the VM test has run, to update world state
-func (b *BlockchainHookMock) UpdateAccounts(modifiedAccounts []*vmi.OutputAccount, accountsToDelete [][]byte) error {
-	for _, modAcct := range modifiedAccounts {
-		acct := b.AcctMap.GetAccount(modAcct.Address)
-		if acct == nil {
-			acct = defaultAccount(modAcct.Address)
-			b.AcctMap.PutAccount(acct)
-		}
-		acct.Exists = true
-		if modAcct.BalanceDelta != nil {
-			acct.Balance = big.NewInt(0).Add(acct.Balance, modAcct.BalanceDelta)
-		} else {
-			acct.Balance = modAcct.Balance
-		}
-		acct.Nonce = modAcct.Nonce
-		if len(modAcct.Code) > 0 {
-			acct.Code = modAcct.Code
-		}
+// UpdateAccounts should be called after the VM test has run, to update world state
+func (b *BlockchainHookMock) UpdateAccounts(
+    modifiedAccounts []*CustomAccount,
+    accountsToDelete [][]byte,
+    callerAddress []byte) error {
 
-		for _, stu := range modAcct.StorageUpdates {
-			acct.Storage[string(stu.Offset)] = stu.Data
-		}
-	}
+    for _, modAcct := range modifiedAccounts {
+        acct := b.AcctMap.GetAccount(modAcct.Address)
+        if acct == nil {
+            acct = defaultAccount(modAcct.Address)
+            b.AcctMap.PutAccount(acct)
+        }
+        acct.Exists = true
+        if modAcct.BalanceDelta != nil {
+            acct.Balance = big.NewInt(0).Add(acct.Balance, modAcct.BalanceDelta)
+        } else {
+            acct.Balance = modAcct.Balance
+        }
+        if modAcct.Nonce > acct.Nonce {
+            acct.Nonce = modAcct.Nonce
+        }
+        if len(modAcct.Code) > 0 {
+            acct.Code = modAcct.Code
+        }
+        if len(modAcct.Data) > 0 {
+            // Access the Data field from CustomAccount.
+            acct.AsyncCallData = string(modAcct.Data)
+        }
 
-	for _, delAddr := range accountsToDelete {
-		b.AcctMap.DeleteAccount(delAddr)
-	}
+        for _, stu := range modAcct.StorageUpdates {
+            acct.Storage[string(stu.Offset)] = stu.Data
+        }
+    }
 
-	return nil
+    for _, delAddr := range accountsToDelete {
+        b.AcctMap.DeleteAccount(delAddr)
+    }
 
+    return nil
 }

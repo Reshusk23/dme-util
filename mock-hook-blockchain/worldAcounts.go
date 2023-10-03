@@ -1,6 +1,7 @@
 package callbackblockchain
 
 import (
+	vmcommon "github.com/Reshusk23/dme-vm-common"
 	"math/big"
 )
 
@@ -9,13 +10,54 @@ type AccountMap map[string]*Account
 
 // Account holds the account info
 type Account struct {
-	Exists       bool
-	Address      []byte
-	Nonce        uint64
-	Balance      *big.Int
-	BalanceDelta *big.Int
-	Storage      map[string][]byte
-	Code         []byte
+	Exists          bool
+	Address         []byte
+	Nonce           uint64
+	Balance         *big.Int
+	BalanceDelta    *big.Int
+	Storage         map[string][]byte
+	Code            []byte
+	CodeMetadata    []byte
+	AsyncCallData   string
+	OwnerAddress    []byte
+	Username        []byte
+	ShardID         uint32
+	IsSmartContract bool
+}
+
+// AccountDataHandler implements vmcommon.UserAccountHandler.
+func (*Account) AccountDataHandler() vmcommon.AccountDataHandler {
+	panic("unimplemented")
+}
+
+// AddToBalance implements vmcommon.UserAccountHandler.
+func (*Account) AddToBalance(value *big.Int) error {
+	panic("unimplemented")
+}
+
+// ChangeOwnerAddress implements vmcommon.UserAccountHandler.
+func (*Account) ChangeOwnerAddress([]byte, []byte) error {
+	panic("unimplemented")
+}
+
+// ClaimDeveloperRewards implements vmcommon.UserAccountHandler.
+func (*Account) ClaimDeveloperRewards([]byte) (*big.Int, error) {
+	panic("unimplemented")
+}
+
+// IncreaseNonce implements vmcommon.UserAccountHandler.
+func (*Account) IncreaseNonce(nonce uint64) {
+	panic("unimplemented")
+}
+
+// SetOwnerAddress implements vmcommon.UserAccountHandler.
+func (*Account) SetOwnerAddress([]byte) {
+	panic("unimplemented")
+}
+
+// SetUserName implements vmcommon.UserAccountHandler.
+func (*Account) SetUserName(userName []byte) {
+	panic("unimplemented")
 }
 
 var storageDefaultValue = []byte{}
@@ -68,4 +110,59 @@ func AccountAddress(i *big.Int) []byte {
 		panic("address cannot be negative")
 	}
 	return i.Bytes()
+}
+
+// AddressBytes -
+func (a *Account) AddressBytes() []byte {
+	return a.Address
+}
+
+// GetNonce -
+func (a *Account) GetNonce() uint64 {
+	return a.Nonce
+}
+
+// GetCode -
+func (a *Account) GetCode() []byte {
+	return a.Code
+}
+
+// GetCodeMetadata -
+func (a *Account) GetCodeMetadata() []byte {
+	return a.CodeMetadata
+}
+
+// GetCodeHash -
+func (a *Account) GetCodeHash() []byte {
+	return []byte{}
+}
+
+// GetRootHash -
+func (a *Account) GetRootHash() []byte {
+	return []byte{}
+}
+
+// GetBalance -
+func (a *Account) GetBalance() *big.Int {
+	return a.Balance
+}
+
+// GetDeveloperReward -
+func (a *Account) GetDeveloperReward() *big.Int {
+	return big.NewInt(0)
+}
+
+// GetOwnerAddress -
+func (a *Account) GetOwnerAddress() []byte {
+	return a.OwnerAddress
+}
+
+// GetOwnerAddress -
+func (a *Account) GetUserName() []byte {
+	return a.Username
+}
+
+// IsInterfaceNil -
+func (a *Account) IsInterfaceNil() bool {
+	return a == nil
 }
