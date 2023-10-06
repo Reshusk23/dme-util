@@ -7,23 +7,6 @@ import (
 	vmi "github.com/Reshusk23/dme-vm-common"
 )
 
-// CustomAccount embeds *vmcommon.OutputAccount and adds a Data field.
-type CustomAccount struct {
-    *vmi.OutputAccount
-    Data string
-}
-
-func defaultAccount(address []byte) *Account {
-	return &Account{
-		Exists:  false,
-		Address: address,
-		Nonce:   0,
-		Balance: zero,
-		Storage: make(map[string][]byte),
-		Code:    nil,
-	}
-}
-
 // UpdateBalance sets a new balance to an account
 func (b *BlockchainHookMock) UpdateBalance(address []byte, newBalance *big.Int) error {
 	acct := b.AcctMap.GetAccount(address)
@@ -38,7 +21,7 @@ func (b *BlockchainHookMock) UpdateBalance(address []byte, newBalance *big.Int) 
 func (b *BlockchainHookMock) UpdateBalanceWithDelta(address []byte, balanceDelta *big.Int) error {
 	acct := b.AcctMap.GetAccount(address)
 	if acct == nil {
-		return errors.New("method UpdateBalance expects an existing address")
+		return errors.New("method UpdateBalanceWithDelta expects an existing address")
 	}
 	acct.Balance = big.NewInt(0).Add(acct.Balance, balanceDelta)
 	return nil
@@ -52,7 +35,7 @@ func (b *BlockchainHookMock) UpdateWorldStateBefore(
 
 	acct := b.AcctMap.GetAccount(fromAddr)
 	if acct == nil {
-		return errors.New("method UpdateBalance expects an existing address")
+		return errors.New("method UpdateWorldStateBefore expects an existing address")
 	}
 	acct.Nonce++
 	gasPayment := big.NewInt(0).Mul(
@@ -66,43 +49,50 @@ func (b *BlockchainHookMock) UpdateWorldStateBefore(
 }
 
 // UpdateAccounts should be called after the VM test has run, to update world state
-// UpdateAccounts should be called after the VM test has run, to update world state
 func (b *BlockchainHookMock) UpdateAccounts(
-    modifiedAccounts []*CustomAccount,
-    accountsToDelete [][]byte,
-    callerAddress []byte) error {
+	modifiedAccounts []*vmi.OutputAccount,
+	accountsToDelete [][]byte,
+	callerAddress []byte) error {
 
-    for _, modAcct := range modifiedAccounts {
-        acct := b.AcctMap.GetAccount(modAcct.Address)
-        if acct == nil {
-            acct = defaultAccount(modAcct.Address)
-            b.AcctMap.PutAccount(acct)
-        }
-        acct.Exists = true
-        if modAcct.BalanceDelta != nil {
-            acct.Balance = big.NewInt(0).Add(acct.Balance, modAcct.BalanceDelta)
-        } else {
-            acct.Balance = modAcct.Balance
-        }
-        if modAcct.Nonce > acct.Nonce {
-            acct.Nonce = modAcct.Nonce
-        }
-        if len(modAcct.Code) > 0 {
-            acct.Code = modAcct.Code
-        }
-        if len(modAcct.Data) > 0 {
-            // Access the Data field from CustomAccount.
-            acct.AsyncCallData = string(modAcct.Data)
-        }
+	for _, modAcct := range modifiedAccounts {
+		acct := b.AcctMap.GetAccount(modAcct.Address)
+		if acct == nil {
+			acct = &Account{
+				Exists:       false,
+				Address:      modAcct.Address,
+				Nonce:        0,
+				Balance:      zero,
+				Storage:      make(map[string][]byte),
+				Code:         nil,
+				OwnerAddress: callerAddress,
+			}
+			b.AcctMap.PutAccount(acct)
+		}
+		acct.Exists = true
+		if modAcct.BalanceDelta != nil {
+			acct.Balance = big.NewInt(0).Add(acct.Balance, modAcct.BalanceDelta)
+		} else {
+			acct.Balance = modAcct.Balance
+		}
+		if modAcct.Nonce > acct.Nonce {
+			acct.Nonce = modAcct.Nonce
+		}
+		if len(modAcct.Code) > 0 {
+			acct.Code = modAcct.Code
+		}
+		if len(modAcct.Data) > 0 {
+			acct.AsyncCallData = string(modAcct.Data)
+		}
 
-        for _, stu := range modAcct.StorageUpdates {
-            acct.Storage[string(stu.Offset)] = stu.Data
-        }
-    }
+		for _, stu := range modAcct.StorageUpdates {
+			acct.Storage[string(stu.Offset)] = stu.Data
+		}
+	}
 
-    for _, delAddr := range accountsToDelete {
-        b.AcctMap.DeleteAccount(delAddr)
-    }
+	for _, delAddr := range accountsToDelete {
+		b.AcctMap.DeleteAccount(delAddr)
+	}
 
-    return nil
+	return nil
+
 }
